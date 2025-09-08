@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>數字勇者大冒險</title>
+  <style>
+    body {
+      margin: 0; font-family: "Comic Sans MS", cursive, sans-serif;
+      text-align: center; color: #fff;
+      background: linear-gradient(to top, #0a0a1a, #1a1a3a 40%, #3a2a6a 100%);
+      height: 100vh; overflow-x: hidden;
+    }
+    h1 { padding:10px; margin:0; z-index:3; position:relative; background:rgba(0,0,0,0.5); }
+    .moon { position: absolute; top: 40px; right: 80px; width: 100px; height: 100px;
+      background: radial-gradient(circle,#fff 60%,#ddd 80%,#bbb 100%);
+      border-radius: 50%; box-shadow: 0 0 25px #fff; z-index: 1; }
+    .star { position:absolute; background:white; border-radius:50%; opacity:0.8; animation: twinkle 2s infinite alternate; }
+    @keyframes twinkle { from{opacity:0.2;} to{opacity:1;} }
+    .castle { position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:900px; height:250px; z-index:2;}
+    .castle svg { width:100%; height:100%; }
+    #battlefield { display:flex; justify-content:space-around; align-items:flex-end; margin-top:40px; position:relative; z-index:3;}
+    .character { text-align:center; position:relative; }
+    .hero img{width:200px;}
+    .boss img{width:250px; transition:transform 0.3s;}
+    .hp-bar{width:200px; height:20px; border:2px solid #fff; background:#333; margin:5px auto;}
+    .hp{height:100%; background:limegreen; width:100%; transition:width 0.5s;}
+    .shake{animation:shake 0.4s;}
+    @keyframes shake{0%,100%{transform:translate(0,0);}25%{transform:translate(-10px,0);}50%{transform:translate(10px,0);}75%{transform:translate(-10px,0);}}
+    .flash{animation:flash 0.5s;}
+    @keyframes flash{0%{filter:brightness(1);}50%{filter:brightness(2);}100%{filter:brightness(1);}}
+    .attack{animation:attackMove 0.6s forwards;}
+    @keyframes attackMove{0%{transform:translateX(0);}50%{transform:translateX(80px) scale(1.1);}100%{transform:translateX(0);}}
+    .hurt{animation:hurtMove 0.6s forwards;}
+    @keyframes hurtMove{0%{transform:translateX(0);}50%{transform:translateX(-60px) scale(0.95);}100%{transform:translateX(0);}}
+    #effect{position:absolute; top:30%; left:50%; transform:translate(-50%,-50%); font-size:2.5em;}
+    #ui{margin-top:20px; position:relative; z-index:3;}
+    #task,#cards,#progress{font-size:1.3em; margin:5px;}
+    input{font-size:1.2em; padding:5px; width:120px;}
+    button{font-size:1.2em; margin:5px; padding:8px 15px; cursor:pointer;}
+    #result{margin-top:10px; font-size:1.4em; font-weight:bold;}
+    #bossSpeech{margin-top:5px; font-style:italic; font-size:1em; color:#ffeb3b;}
+    #summary{display:none; margin-top:20px; background:rgba(255,255,255,0.9); color:#000; width:80%; max-width:400px; border-radius:10px; padding:20px; margin-left:auto; margin-right:auto;}
+    #summary .emoji{font-size:2em; margin-top:10px;}
+
+    /* 劍光 */
+    .sword-slash {
+      position: absolute;
+      left: 200px; bottom: 200px;
+      width: 120px; height: 20px;
+      background: linear-gradient(90deg, #fff, #ff0, #f00);
+      border-radius: 10px;
+      box-shadow: 0 0 15px #fff, 0 0 25px #ff0;
+      transform: rotate(-15deg);
+      animation: slashAnim 0.6s ease-out forwards;
+      opacity:0.9;
+      z-index: 10;
+    }
+    @keyframes slashAnim {
+      0%   { transform:translateX(0) rotate(-15deg) scaleX(1); opacity:1; }
+      70%  { transform:translateX(250px) rotate(-15deg) scaleX(1.2); opacity:0.8; }
+      100% { transform:translateX(400px) rotate(-15deg) scaleX(0.8); opacity:0; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🧙 數字勇者大冒險 🎲</h1>
+  <div class="moon"></div>
+  <div class="castle">
+    <svg viewBox="0 0 800 250"><rect x="0" y="200" width="800" height="50" fill="#111"/><rect x="300" y="100" width="200" height="100" fill="#000"/><rect x="250" y="80" width="50" height="120" fill="#000"/><rect x="500" y="80" width="50" height="120" fill="#000"/><polygon points="250,80 275,30 300,80" fill="#000"/><polygon points="500,80 525,30 550,80" fill="#000"/><rect x="370" y="30" width="60" height="70" fill="#000"/><polygon points="370,30 400,-10 430,30" fill="#000"/></svg>
+  </div>
+
+  <!-- 對戰 -->
+  <div id="battlefield">
+    <div class="character hero">
+      <img id="heroImg" src="images/knight.png" alt="Hero">
+      <div class="hp-bar"><div id="heroHp" class="hp"></div></div>
+      <p id="heroHpValue">HP: 100 / 100</p>
+      <p>勇者</p>
+    </div>
+    <div class="character boss">
+      <img id="bossImg" src="images/boss.png" alt="Boss">
+      <div class="hp-bar"><div id="bossHp" class="hp"></div></div>
+      <p id="bossHpValue">HP: 100 / 100</p>
+      <div id="effect"></div>
+      <p>魔王</p>
+      <p id="bossSpeech"></p>
+    </div>
+  </div>
+
+  <!-- 題目 -->
+  <div id="ui">
+    <p id="progress">第 0 題</p>
+    <p id="task">請按「開始挑戰」！</p>
+    <p id="cards"></p>
+    <input type="number" id="answer" placeholder="輸入三位數" min="100" max="999"><br>
+    <button onclick="checkAnswer()">提交答案</button>
+    <button onclick="newGame()">開始挑戰</button>
+    <p id="result"></p>
+  </div>
+
+  <!-- 結算 -->
+  <div id="summary">
+    <h2>🏆 遊戲結算</h2>
+    <p id="scoreText"></p>
+    <p id="comment"></p>
+    <div class="emoji" id="reward"></div>
+    <button onclick="newGame()">🔄 再玩一次</button>
+  </div>
+
+  <!-- 音效 -->
+  <audio id="attackSound"><source src="sounds/attack.mp3" type="audio/mp3"></audio>
+  <audio id="wrongSound"><source src="sounds/wrong.mp3" type="audio/mp3"></audio>
+  <audio id="bgm" loop><source src="sounds/bgm.mp3" type="audio/mp3"></audio>
+  <audio id="startSound"><source src="sounds/start.mp3" type="audio/mp3"></audio>
+  <audio id="winSound"><source src="sounds/win.mp3" type="audio/mp3"></audio>
+  <audio id="loseSound"><source src="sounds/lose.mp3" type="audio/mp3"></audio>
+
+  <script>
+    // 🌌 產生星星
+    for(let i=0;i<40;i++){
+      const s=document.createElement("div"); s.className="star";
+      s.style.top=Math.random()*300+"px"; s.style.left=Math.random()*window.innerWidth+"px";
+      const size=Math.random()*2+1; s.style.width=s.style.height=size+"px";
+      s.style.animationDuration=(Math.random()*2+1)+"s"; document.body.appendChild(s);
+    }
+
+    const digits=["0","1","2","3","4","5","6","7","8","9"];
+    let cards=[],task="",correctAnswer=null;
+    let bossHP=100,maxBossHP=100;
+    let heroHP=100,maxHeroHP=100;
+    let questionCount=0,correctCount=0;
+
+    const heroImg=document.getElementById("heroImg");
+    const bossImg=document.getElementById("bossImg");
+    const bossHpBar=document.getElementById("bossHp");
+    const heroHpBar=document.getElementById("heroHp");
+    const bossHpValue=document.getElementById("bossHpValue");
+    const heroHpValue=document.getElementById("heroHpValue");
+    const taskText=document.getElementById("task");
+    const cardsText=document.getElementById("cards");
+    const result=document.getElementById("result");
+    const progress=document.getElementById("progress");
+    const bossSpeech=document.getElementById("bossSpeech");
+    const attackSound=document.getElementById("attackSound");
+    const wrongSound=document.getElementById("wrongSound");
+    const bgm=document.getElementById("bgm");
+    const startSound=document.getElementById("startSound");
+    const winSound=document.getElementById("winSound");
+    const loseSound=document.getElementById("loseSound");
+    const effect=document.getElementById("effect");
+    const summary=document.getElementById("summary");
+    const scoreText=document.getElementById("scoreText");
+    const comment=document.getElementById("comment");
+    const reward=document.getElementById("reward");
+
+    function newGame(){
+      bossHP=maxBossHP; heroHP=maxHeroHP;
+      questionCount=0;correctCount=0;
+      bossHpBar.style.width="100%"; bossHpValue.textContent=`HP: ${bossHP} / ${maxBossHP}`;
+      heroHpBar.style.width="100%"; heroHpValue.textContent=`HP: ${heroHP} / ${maxHeroHP}`;
+      result.textContent=""; progress.textContent=`第 0 題`;
+      taskText.textContent="挑戰開始！"; cardsText.textContent="";
+      bossSpeech.textContent="";
+      summary.style.display="none"; document.getElementById("ui").style.display="block";
+      startSound.play(); bgm.play(); generateQuestion();
+    }
+
+    function generateQuestion(){
+      if(bossHP<=0 || heroHP<=0){endGame(bossHP<=0);return;}
+      cards=[];while(cards.length<3){
+        let r=digits[Math.floor(Math.random()*10)];
+        if(!cards.includes(r)) cards.push(r);
+      }
+      const tasks=["最大數","最小數","最大偶數","最小奇數"];
+      task=tasks[Math.floor(Math.random()*tasks.length)];
+      cardsText.textContent="數卡："+cards.join(" , ");
+      taskText.textContent="任務："+task;
+      let valid=[];
+      for(const a of cards){for(const b of cards){for(const c of cards){
+        if(a===b||b===c||a===c) continue;
+        if(a==="0") continue;
+        valid.push(parseInt(a+b+c));
+      }}} 
+      if(valid.length===0){generateQuestion();return;}
+      if(task==="最大數") correctAnswer=Math.max(...valid);
+      else if(task==="最小數") correctAnswer=Math.min(...valid);
+      else if(task==="最大偶數"){let ev=valid.filter(n=>n%2===0);correctAnswer=ev.length?Math.max(...ev):null;}
+      else if(task==="最小奇數"){let od=valid.filter(n=>n%2===1);correctAnswer=od.length?Math.min(...od):null;}
+      questionCount++; progress.textContent=`第 ${questionCount} 題`;
+    }
+
+    function checkAnswer(){
+      if(bossHP<=0 || heroHP<=0) return;
+      const input=document.getElementById("answer"); let ans=parseInt(input.value);
+      if(isNaN(ans)){result.textContent="⚠️ 請輸入答案！";return;}
+      if(correctAnswer===null){result.textContent="😅 無解，換題！";generateQuestion();return;}
+      if(ans===correctAnswer){
+        result.textContent="✅ 答對了！";
+        attackSound.currentTime=0;attackSound.play();
+        correctCount++;
+
+        // 劍光動畫
+        const slash=document.createElement("div");
+        slash.className="sword-slash";
+        document.body.appendChild(slash);
+        slash.addEventListener("animationend",()=>slash.remove());
+
+        heroImg.classList.add("attack");
+        bossImg.classList.add("shake","flash");
+        bossSpeech.textContent="😱 竟然答對了！";
+        animateBossHP(bossHP-10);
+        setTimeout(()=>heroImg.classList.remove("attack"),700);
+        setTimeout(()=>bossImg.classList.remove("shake","flash"),600);
+      }else{
+        result.textContent="❌ 答錯了！";
+        wrongSound.currentTime=0;wrongSound.play();
+        heroImg.classList.add("hurt");
+        bossSpeech.textContent="哈哈！太遜了！😈";
+        animateHeroHP(heroHP-10);
+        setTimeout(()=>heroImg.classList.remove("hurt"),700);
+      }
+      input.value="";
+      setTimeout(generateQuestion,1500);
+    }
+
+    function animateBossHP(newHP){
+      if(newHP<0) newHP=0;
+      let start=bossHP,diff=newHP-start,st=null;
+      function step(t){
+        if(!st) st=t;
+        let prog=(t-st)/500;if(prog>1)prog=1;
+        let cur=start+diff*prog; bossHP=cur;
+        bossHpBar.style.width=(cur/maxBossHP*100)+"%";
+        bossHpValue.textContent=`HP: ${Math.round(cur)} / ${maxBossHP}`;
+        if(prog<1) requestAnimationFrame(step); else if(newHP===0) endGame(true);
+      }
+      requestAnimationFrame(step);
+    }
+    function animateHeroHP(newHP){
+      if(newHP<0) newHP=0;
+      let start=heroHP,diff=newHP-start,st=null;
+      function step(t){
+        if(!st) st=t;
+        let prog=(t-st)/500;if(prog>1)prog=1;
+        let cur=start+diff*prog; heroHP=cur;
+        heroHpBar.style.width=(cur/maxHeroHP*100)+"%";
+        heroHpValue.textContent=`HP: ${Math.round(cur)} / ${maxHeroHP}`;
+        if(prog<1) requestAnimationFrame(step); else if(newHP===0) endGame(false);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function endGame(win){
+      document.getElementById("ui").style.display="none"; summary.style.display="block";
+      if(win){
+        winSound.play(); 
+        scoreText.textContent=`🎉 你答對 ${correctCount} 題，打敗了魔王！`;
+        comment.textContent="超神勇者！🔥"; reward.textContent="🏆🔥";
+      }else{
+        loseSound.play(); 
+        scoreText.textContent=`😢 你答對 ${correctCount} 題，但勇者被打倒了！`;
+        comment.textContent="再試一次吧！💪"; reward.textContent="💀";
+      }
+      bgm.pause();
+    }
+  </script>
+</body>
+</html>
